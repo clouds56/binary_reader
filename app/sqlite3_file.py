@@ -14,7 +14,7 @@ class SQLiteFile:
     def load_btree(self, index):
         if isinstance(index, str):
             for _, v in self.tables:
-                if v[1] == index or v[2] == index:
+                if v[1] == index:
                     print("found", v)
                     return self.load_btree(v[3]-1)
             return []
@@ -24,12 +24,14 @@ class SQLiteFile:
         if page_type == 13:
             for c, p in zip(page.cells, page.payloads):
                 rows.append((c['rowid'], p['column_contents']))
-        else:
+        elif page_type == 5:
             for c in page.cells:
                 print("load btree page %s -> %s, %s" % (index+1, c['left_child_page'], c['rowid']))
                 rows += self.load_btree(c['left_child_page']-1)
             print("load btree page %s -> %s, -1" % (index+1, page.header['right_most_page']))
             rows += self.load_btree(page.header['right_most_page']-1)
+        else:
+            print("unknown page type %s" % page_type)
         return rows
 
     def load_btree_page(self, index):
@@ -115,7 +117,7 @@ class Page:
         return self
 
 
-def create_test_db():
+def _init_test():
     import sqlite3
     conn = sqlite3.connect('example.db')
     c = conn.cursor()
@@ -144,4 +146,9 @@ def _test():
     file.load_btree(0)
     ##
     rows = file.load_btree("stocks")
-    len(rows)
+    ##
+    import csv
+    with open("stocks.csv", "w", encoding="utf-8") as fout:
+        writer = csv.writer(fout, delimiter=",", lineterminator="\n", quotechar='"', doublequote=True, strict=True)
+        for _, v in sorted(rows):
+            writer.writerow(v)
