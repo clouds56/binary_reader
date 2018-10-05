@@ -8,7 +8,7 @@ class SQLiteFile:
 
     def load(self):
         self.file.seek(0)
-        self.config = self.readbin(sqlite3.header_schema, self.file.read(100))
+        self.config = self.readbin("header_schema", self.file.read(100))
         self.tables = self.load_btree(0)
 
     def load_btree(self, index):
@@ -45,6 +45,8 @@ class SQLiteFile:
     def readbin(schema, bin_, *, cache=None):
         if cache is None:
             cache = {}
+        if isinstance(schema, str):
+            schema = sqlite3.schemas[schema].format
         return dict(sqlite3.read_schema_list(schema, bin_, table=sqlite3.format_table, cache=cache))
 
 
@@ -58,7 +60,7 @@ class Page:
         self.load_cells_payload(file)
 
     def load(self, first=False):
-        self.header = SQLiteFile.readbin(sqlite3.page_header_schema, self.page_bin[100:] if first else self.page_bin)
+        self.header = SQLiteFile.readbin("page_header_schema", self.page_bin[100:] if first else self.page_bin)
         return self
 
     def load_cells(self):
@@ -66,7 +68,7 @@ class Page:
         cache = self.header.copy()
         cache['config'] = self.config
         for i in self.header['cell_offset_array']:
-            self.cells.append(SQLiteFile.readbin(sqlite3.cell_header_schema, self.page_bin[i:], cache=cache))
+            self.cells.append(SQLiteFile.readbin("cell_header_schema", self.page_bin[i:], cache=cache))
         return self
 
     def load_overflows(self, file, cell=None):
@@ -88,7 +90,7 @@ class Page:
             return acc_page, acc
         file.seek(acc_page[-1] * self.config['page_size'])
         page_bin = file.read(self.config['page_size'])
-        page_header = SQLiteFile.readbin(sqlite3.page_overflow_header_schema, page_bin)
+        page_header = SQLiteFile.readbin("page_overflow_header_schema", page_bin)
         # print("load overflow %s -> %s" % (acc_page, page_header))
         offset = page_header['offset']
         content = page_bin[offset:max(offset + total_size - size, 0)]
@@ -113,7 +115,7 @@ class Page:
                     payload = b''.join(i['full_payload'])
                 else:
                     print("overflow not loaded %s" % i)
-            self.payloads.append(SQLiteFile.readbin(sqlite3.record_format_schema, payload))
+            self.payloads.append(SQLiteFile.readbin("record_format_schema", payload))
         return self
 
 

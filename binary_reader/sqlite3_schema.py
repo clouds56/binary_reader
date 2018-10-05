@@ -41,7 +41,7 @@ page_header_schema = [
     ("cell_start_offset", "!H"),
     ("cell_free_bytes", "b"),
     ("right_most_page", sf().cache("page_type").in_([2,5]).if_("!L")),
-    ("cell_offset_array", sf().cache("cell_number")._p(lambda r: "[!"+"H"*r))
+    ("cell_offset_array", sf().cache("cell_number").apply_(lambda r: "[!"+"H"*r, []))
 ]
 
 def local_payload_size(page_type, payload_size, page_size):
@@ -82,7 +82,7 @@ block_header_schema = [
 record_format_schema = [
     ("header_size", "varint"),
     ("column_types", ("read_until_offset", "varint", sf().cache("header_size"))),
-    ("column_contents", lambda cache: [(i, ("function", read_variable, v)) for i,v in enumerate(cache["column_types"][2])]),
+    ("column_contents", lambda cache: [(i, ("function", read_variable, v)) for i, v in enumerate(cache["column_types"][2])]),
 ]
 
 page_overflow_header_schema = [
@@ -146,4 +146,13 @@ def read_variable(bin, cur, cache):
 format_table = {
     "varint": read_varint,
     "variable": read_variable,
+}
+
+schemas = {
+    "header_schema": Schema.compile(header_schema, name="header", table=format_table),
+    "page_header_schema": Schema.compile(page_header_schema, name="page_header", table=format_table),
+    "cell_header_schema": Schema.compile(cell_header_schema, name="cell_header", table=format_table),
+    "block_header_schema": Schema.compile(block_header_schema, name="block_header", table=format_table),
+    "record_format_schema": Schema.compile(record_format_schema, name="record_format", table=format_table),
+    "page_overflow_header_schema": Schema.compile(page_overflow_header_schema, name="page_overflow_header", table=format_table),
 }
